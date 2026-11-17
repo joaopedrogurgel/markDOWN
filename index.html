@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pauta — converta PDF em Markdown no navegador</title>
+    <meta
+      name="description"
+      content="Converta PDFs em Markdown limpo, com títulos, listas e parágrafos. Tudo acontece no navegador: o arquivo não é enviado a nenhum servidor."
+    />
+    <meta name="theme-color" content="#f3f5f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1524" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content="Pauta — PDF para Markdown" />
+    <meta
+      property="og:description"
+      content="Converta PDFs em Markdown direto no navegador, sem enviar arquivos."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Apply the saved theme before first paint to avoid a flash of the wrong colours.
+      try {
+        const saved = localStorage.getItem('pauta:theme');
+        if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+        else if (matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = 'dark';
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,159 @@
+/*
+ * Rendered Markdown. Headings keep their # marks hanging in the left margin,
+ * so the preview never hides which syntax produced it.
+ */
+.prose {
+  --hang: 2.6rem;
+  max-width: 68ch;
+  padding: var(--space-5) var(--space-5) var(--space-7) calc(var(--hang) + var(--space-3));
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.prose > * + * {
+  margin-top: 1em;
+}
+
+.prose :is(h1, h2, h3, h4, h5, h6) {
+  position: relative;
+  margin-top: 1.6em;
+  color: var(--ink);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose :is(h1, h2, h3, h4, h5, h6)::before {
+  position: absolute;
+  right: calc(100% + 0.6rem);
+  top: 0.28em;
+  font-family: var(--font-mono);
+  font-size: 0.62em;
+  font-weight: 500;
+  line-height: inherit;
+  letter-spacing: 0;
+  color: var(--syntax);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.prose h1 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.prose h1::before {
+  content: '#';
+}
+
+.prose h2 {
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+.prose h2::before {
+  content: '##';
+}
+
+.prose h3 {
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+.prose h3::before {
+  content: '###';
+}
+
+.prose h4 {
+  font-size: var(--text-base);
+  font-weight: 650;
+}
+.prose h4::before {
+  content: '####';
+}
+
+.prose :is(ul, ol) {
+  padding-left: 1.4em;
+}
+
+.prose li + li {
+  margin-top: 0.3em;
+}
+
+.prose li::marker {
+  color: var(--syntax);
+}
+
+.prose ol > li::marker {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.prose strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.prose a {
+  color: var(--syntax);
+  text-underline-offset: 3px;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px dashed var(--line-strong);
+  margin-block: 2em;
+}
+
+.prose blockquote {
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--syntax-soft);
+  color: var(--muted);
+}
+
+.prose code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.prose pre {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  overflow-x: auto;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.prose :is(th, td) {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+@media (max-width: 520px) {
+  .prose {
+    --hang: 0rem;
+    padding: var(--space-4);
+  }
+
+  .prose :is(h1, h2, h3, h4, h5, h6)::before {
+    position: static;
+    margin-right: 0.5rem;
+  }
+}

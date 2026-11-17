@@ -1,0 +1,128 @@
+.landing {
+  --hang: clamp(0rem, 6vw - 1rem, 3.5rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--space-7) clamp(var(--space-4), 4vw, var(--space-6)) var(--space-8);
+  padding-left: calc(clamp(var(--space-4), 4vw, var(--space-6)) + var(--hang));
+}
+
+/* The page's signature: Markdown syntax hangs in the margin, outside the text block. */
+.hash {
+  position: absolute;
+  right: calc(100% + 0.35em);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--syntax);
+  user-select: none;
+}
+
+.intro {
+  max-width: 40rem;
+}
+
+.headline {
+  position: relative;
+  font-size: var(--text-2xl);
+  font-weight: 720;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.headline .hash {
+  top: 0.04em;
+  font-size: 0.82em;
+}
+
+.lede {
+  max-width: 34rem;
+  margin-top: var(--space-5);
+  font-size: var(--text-md);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.options {
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.steps {
+  margin-top: var(--space-5);
+}
+
+.stepsTitle {
+  position: relative;
+  font-size: var(--text-lg);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.stepsTitle .hash {
+  top: 0.15em;
+  font-size: 0.8em;
+}
+
+.stepList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-5) var(--space-6);
+  margin-top: var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-3);
+  align-items: baseline;
+}
+
+.stepMarker {
+  grid-row: span 2;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--syntax);
+}
+
+.stepTitle {
+  font-size: var(--text-base);
+  font-weight: 650;
+}
+
+.stepText {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  max-width: 34ch;
+}
+
+/* Wide screens: headline on the left, drop sheet on the right. */
+@media (min-width: 1000px) {
+  .landing {
+    grid-template-columns: 5fr 6fr;
+    column-gap: var(--space-7);
+    align-items: center;
+    padding-top: var(--space-8);
+  }
+
+  .options,
+  .steps {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Too narrow for a hanging margin: the marks sit inline instead. */
+@media (max-width: 640px) {
+  .hash {
+    position: static;
+    margin-right: 0.3em;
+  }
+}

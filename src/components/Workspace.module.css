@@ -1,0 +1,252 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-left: var(--space-2);
+}
+
+.sidebarTitle {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.options {
+  margin-top: auto;
+  padding: var(--space-4) var(--space-2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.optionsSummary {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.options[open] .optionsSummary {
+  margin-bottom: var(--space-4);
+}
+
+/* The panel already has an accessible legend; the summary plays that role visually. */
+.options legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* ---------- Main ---------- */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.fileMeta {
+  min-width: 0;
+}
+
+.fileName {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.controls,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.controls {
+  gap: var(--space-3);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+}
+
+.segment {
+  min-height: calc(2.5rem - 8px);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: var(--text-sm);
+  font-weight: 560;
+  color: var(--muted);
+}
+
+.segment[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+.panes {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+}
+
+.panes[data-mode='split'] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+}
+
+.pane + .pane {
+  border-left: 1px solid var(--line);
+}
+
+.pane[data-kind='preview'] {
+  background: var(--paper);
+}
+
+/* ---------- Empty, loading and error states ---------- */
+.state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  max-width: 34rem;
+  padding: var(--space-7) var(--space-5);
+}
+
+.stateTitle {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.stateText {
+  color: var(--muted);
+  padding: var(--space-2) 0;
+}
+
+.state[data-tone='error'] .stateTitle {
+  color: var(--danger);
+}
+
+.progress {
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.progress::-webkit-progress-bar {
+  background: var(--surface-sunken);
+}
+
+.progress::-webkit-progress-value {
+  background: var(--syntax);
+  transition: width 200ms ease;
+}
+
+.progress::-moz-progress-bar {
+  background: var(--syntax);
+}
+
+/* ---------- Small screens: stack everything ---------- */
+@media (max-width: 959px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .sidebarHead {
+    padding-left: 0;
+  }
+
+  .options {
+    padding: var(--space-3) 0 0;
+  }
+
+  .toolbar {
+    padding: var(--space-4);
+  }
+
+  .controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pane {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 520px) {
+  .actions {
+    width: 100%;
+  }
+
+  .actions > :global(.button) {
+    flex: 1;
+  }
+}

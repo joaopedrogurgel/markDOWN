@@ -1,0 +1,80 @@
+.sheet {
+  --ruling: color-mix(in srgb, var(--line) 55%, transparent);
+  --pad-x: clamp(var(--space-5), 5vw, var(--space-7));
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: calc(var(--rule) * 1.5) var(--pad-x) calc(var(--rule) * 1.25);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface);
+  /* Ruled paper: faint lines every --rule, plus a margin line on the left. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--rule) - 1px),
+    var(--ruling) calc(var(--rule) - 1px),
+    var(--ruling) var(--rule)
+  );
+  background-position: 0 calc(var(--rule) * 0.5);
+  transition:
+    border-color 160ms ease,
+    transform 240ms var(--ease-out),
+    box-shadow 240ms var(--ease-out);
+}
+
+/* The margin line of a notebook page. */
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: calc(var(--pad-x) - 0.9rem);
+  width: 2px;
+  background: var(--syntax-soft);
+}
+
+.sheet > * {
+  position: relative;
+}
+
+.sheet[data-dragging] {
+  border-color: var(--syntax);
+  border-style: solid;
+  box-shadow: 0 0 0 6px var(--syntax-soft);
+  transform: scale(1.01);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: var(--syntax-soft);
+  color: var(--syntax);
+}
+
+.icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: var(--rule);
+}
+
+.hint {
+  color: var(--muted);
+  line-height: var(--rule);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

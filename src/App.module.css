@@ -1,0 +1,50 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* In the workspace the app fills the viewport and the panes scroll on their own. */
+@media (min-width: 960px) {
+  .app:has(.content > :not(main)) {
+    height: 100dvh;
+  }
+}
+
+.skip {
+  position: absolute;
+  left: var(--space-4);
+  top: -4rem;
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--syntax);
+  color: var(--on-syntax);
+}
+
+.skip:focus {
+  top: var(--space-3);
+}
+
+.dropOverlay {
+  position: fixed;
+  inset: var(--space-3);
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--syntax);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(2px);
+  font-size: var(--text-xl);
+  font-weight: 650;
+  color: var(--syntax);
+  pointer-events: none;
+}
