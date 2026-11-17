@@ -1,3 +1,4 @@
+import { plural } from '../lib/format';
 import type { ConversionOptions } from '../lib/markdown';
 import { DropSheet } from './DropSheet';
 import { OptionsPanel } from './OptionsPanel';
@@ -25,6 +26,9 @@ interface LandingProps {
   onFiles: (files: File[]) => void;
   onExample: () => void;
   loadingExample: boolean;
+  /** Files already in the list, e.g. kept from an earlier visit. */
+  savedCount: number;
+  onResume: () => void;
 }
 
 export function Landing({
@@ -34,6 +38,8 @@ export function Landing({
   onFiles,
   onExample,
   loadingExample,
+  savedCount,
+  onResume,
 }: LandingProps) {
   return (
     <main className={styles.landing}>
@@ -45,9 +51,14 @@ export function Landing({
           Do PDF ao Markdown, sem sair do navegador.
         </h1>
         <p className={styles.lede}>
-          Títulos, listas, negrito e parágrafos reconstruídos a partir do layout do PDF. Rápido, privado e
-          gratuito.
+          Títulos, listas, tabelas, links e textos em duas colunas reconstruídos a partir do layout do PDF.
+          Rápido, privado, gratuito e funciona até sem internet.
         </p>
+        {savedCount > 0 && (
+          <button type="button" className={`button ${styles.resume}`} onClick={onResume}>
+            Continuar de onde parou ({plural(savedCount, 'arquivo', 'arquivos')})
+          </button>
+        )}
       </div>
 
       <div className={styles.drop}>

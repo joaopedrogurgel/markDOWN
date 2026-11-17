@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export type Theme = 'light' | 'dark';
-const STORAGE_KEY = 'pauta:theme';
+const STORAGE_KEY = 'markdown:theme';
 
 function initialTheme(): Theme {
   const attr = document.documentElement.dataset.theme;

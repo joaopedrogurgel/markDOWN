@@ -1,4 +1,5 @@
-import type { PageText, TextRun } from '../markdown';
+import type { PageText } from '../markdown';
+import { toLinkAreas, toTextRuns, type RawTextItem } from './runs';
 
 export interface ExtractProgress {
   page: number;
@@ -47,8 +48,6 @@ function hasPdfSignature(data: Uint8Array): boolean {
   }
   return false;
 }
-
-const isBoldFont = (name: string) => /bold|black|heavy|semibold|demi/i.test(name);
 
 /** Reads every page of a PDF and returns its positioned text runs. */
 export async function extractPdf(
@@ -99,22 +98,12 @@ export async function extractPdf(
         // Weight detection is a nicety; the text itself is already in hand.
       }
 
-      const runs: TextRun[] = [];
-      for (const item of content.items) {
-        if (!('str' in item) || item.str.length === 0) continue;
-        const [a, b, c, d, e, f] = item.transform as number[];
-        // Skip vertical or rotated text, which rarely belongs to the reading flow.
-        if (Math.abs(b) > 0.01 || Math.abs(c) > 0.01) continue;
-        const fontSize = item.height || Math.hypot(c, d) || Math.hypot(a, b);
-        runs.push({
-          text: item.str,
-          x: e,
-          y: f,
-          width: item.width,
-          fontSize,
-          bold: isBoldFont(fontNames.get(item.fontName) ?? ''),
-        });
-      }
+      const annotations = await page.getAnnotations({ intent: 'display' }).catch(() => []);
+      const runs = toTextRuns(
+        content.items.filter((item) => 'str' in item) as RawTextItem[],
+        fontNames,
+        toLinkAreas(annotations),
+      );
 
       pages.push({ pageNumber, width: viewport.width, height: viewport.height, runs });
       page.cleanup();

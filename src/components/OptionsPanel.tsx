@@ -4,6 +4,8 @@ import styles from './OptionsPanel.module.css';
 const FIELDS: Array<{ key: keyof ConversionOptions; label: string; hint: string }> = [
   { key: 'detectHeadings', label: 'Títulos', hint: 'Textos maiores ou em negrito viram #, ## e ###' },
   { key: 'detectLists', label: 'Listas', hint: 'Marcadores e numeração viram listas Markdown' },
+  { key: 'detectTables', label: 'Tabelas', hint: 'Texto alinhado em grade vira tabela Markdown' },
+  { key: 'detectColumns', label: 'Duas colunas', hint: 'Lê a coluna da esquerda antes da direita' },
   {
     key: 'removeRepeatedLines',
     label: 'Limpar cabeçalhos e rodapés',
@@ -27,7 +29,7 @@ export function OptionsPanel({ options, onChange, layout = 'row' }: OptionsPanel
           <input
             type="checkbox"
             role="switch"
-            className={styles.switch}
+            className="switch"
             checked={options[key]}
             onChange={(event) => onChange({ ...options, [key]: event.target.checked })}
           />

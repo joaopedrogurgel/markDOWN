@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Relatório de vendas</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 22mm 20mm;
+      }
+      body {
+        font-family: 'DejaVu Sans', sans-serif;
+        font-size: 10pt;
+        line-height: 1.5;
+        color: #111;
+      }
+      h1 {
+        font-size: 20pt;
+        margin: 0 0 10pt;
+      }
+      h2 {
+        font-size: 14pt;
+        margin: 16pt 0 6pt;
+      }
+      p {
+        margin: 0 0 8pt;
+      }
+      table {
+        border-collapse: collapse;
+        margin: 6pt 0 12pt;
+      }
+      th,
+      td {
+        padding: 4pt 14pt 4pt 0;
+        text-align: left;
+        border-bottom: 0.5pt solid #bbb;
+      }
+      th {
+        font-weight: bold;
+      }
+      td.num {
+        text-align: right;
+      }
+      ol,
+      ul {
+        margin: 0 0 8pt;
+        padding-left: 18pt;
+      }
+      a {
+        color: #1a3dbf;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Relatório de vendas do terceiro trimestre</h1>
+    <p>
+      As vendas cresceram em todas as regiões no período. O destaque foi o <strong>Plano Pro</strong>, que
+      passou a responder pela maior parte da receita.
+    </p>
+    <h2>Receita por plano</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Plano</th>
+          <th>Clientes</th>
+          <th>Receita</th>
+          <th>Variação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Básico</td>
+          <td class="num">1.240</td>
+          <td class="num">R$ 18.600</td>
+          <td>+4%</td>
+        </tr>
+        <tr>
+          <td>Pro</td>
+          <td class="num">860</td>
+          <td class="num">R$ 51.600</td>
+          <td>+21%</td>
+        </tr>
+        <tr>
+          <td>Equipe</td>
+          <td class="num">112</td>
+          <td class="num">R$ 33.600</td>
+          <td>+12%</td>
+        </tr>
+        <tr>
+          <td>Empresarial</td>
+          <td class="num">9</td>
+          <td class="num">R$ 27.000</td>
+          <td>+3%</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Os valores estão em reais e consideram apenas contratos ativos no último dia do trimestre.</p>
+    <h2>Próximas ações</h2>
+    <ol>
+      <li>Ampliar a equipe de suporte para os clientes do Plano Pro.</li>
+      <li>Revisar o preço do Plano Básico.</li>
+      <li>Lançar a integração com planilhas.</li>
+    </ol>
+    <h2>Riscos</h2>
+    <ul>
+      <li>Concorrência com preços mais baixos no Sul.</li>
+      <li>Dependência de poucos clientes no Plano Empresarial.</li>
+    </ul>
+    <p>
+      O detalhamento por cliente está disponível no
+      <a href="https://example.com/relatorios/q3">painel de vendas</a>.
+    </p>
+  </body>
+</html>

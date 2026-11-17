@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  check:
+    name: Tipos, lint, testes e corpus
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +27,47 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Includes the corpus quality gate: no document may score below its baseline.
       - run: npm run check
+
+  e2e:
+    name: Testes no navegador
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7
+
+  build:
+    name: Build e limite de tamanho
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npm run build
         env:
           # Pages serves the site at https://<usuario>.github.io/<repositorio>/
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Optional: set these as repository variables to turn on telemetry.
+          VITE_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          VITE_GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
+      - run: npm run size
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

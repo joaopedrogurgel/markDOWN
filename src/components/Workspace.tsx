@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { currentMarkdown, type Conversions, type ConversionItem } from '../hooks/useConversions';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { downloadText } from '../lib/download';
+import { downloadText, downloadZip } from '../lib/download';
 import { formatDuration, plural, toMarkdownName } from '../lib/format';
 import { countWords } from '../lib/markdown';
+import { track } from '../lib/telemetry';
 import { FileList } from './FileList';
 import { FilePicker } from './FilePicker';
 import { CopyIcon, DownloadIcon, UndoIcon, UploadIcon } from './Icons';
@@ -11,7 +12,9 @@ import { OptionsPanel } from './OptionsPanel';
 import { SourceEditor } from './SourceEditor';
 import styles from './Workspace.module.css';
 
+// Both are sizeable and only needed once a file is open.
 const MarkdownPreview = lazy(() => import('./MarkdownPreview'));
+const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 
 type ViewMode = 'source' | 'split' | 'preview';
 
@@ -26,6 +29,15 @@ export function Workspace({ conversions }: { conversions: Conversions }) {
   const isWide = useMediaQuery('(min-width: 960px)');
   const [mode, setMode] = useState<ViewMode>('split');
   const effectiveMode = !isWide && mode === 'split' ? 'preview' : mode;
+  const finished = items.filter((item) => item.status === 'done' && item.markdown.trim());
+
+  const downloadAll = () => {
+    track('downloaded-zip');
+    void downloadZip(
+      'markdown.zip',
+      finished.map((item) => ({ name: toMarkdownName(item.name), content: currentMarkdown(item) })),
+    );
+  };
 
   return (
     <div className={styles.workspace}>
@@ -43,9 +55,16 @@ export function Workspace({ conversions }: { conversions: Conversions }) {
           onSelect={conversions.select}
           onRemove={conversions.remove}
         />
+        {finished.length > 1 && (
+          <button type="button" className="button" onClick={downloadAll}>
+            <DownloadIcon />
+            Baixar todos (.zip)
+          </button>
+        )}
         <details className={styles.options} open={isWide || undefined}>
           <summary className={styles.optionsSummary}>Opções de conversão</summary>
           <OptionsPanel options={options} onChange={conversions.setOptions} layout="column" />
+          <HistorySetting conversions={conversions} />
         </details>
       </aside>
 
@@ -73,7 +92,42 @@ interface ResultProps {
   conversions: Conversions;
 }
 
+/**
+ * Scrolls the preview so it shows the same part of the document as the editor:
+ * headings are the anchors, and the space between two headings is interpolated.
+ */
+function scrollPreviewTo(pane: HTMLElement, markdown: string, topLine: number) {
+  const lines = markdown.split('\n');
+  const headingLines: number[] = [];
+  lines.forEach((line, index) => {
+    if (/^#{1,6}\s/.test(line)) headingLines.push(index + 1);
+  });
+  const headings = [...pane.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')];
+  const offset = (element: HTMLElement) =>
+    element.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop;
+
+  const passed = headingLines.filter((line) => line <= topLine).length;
+  const fromLine = passed ? headingLines[passed - 1] : 1;
+  const toLine = headingLines[passed] ?? lines.length;
+  const fromTop = passed && headings[passed - 1] ? offset(headings[passed - 1]) : 0;
+  const toTop = headings[passed] ? offset(headings[passed]) : pane.scrollHeight - pane.clientHeight;
+  const fraction = Math.min(1, Math.max(0, (topLine - fromLine) / Math.max(1, toLine - fromLine)));
+  pane.scrollTop = fromTop + fraction * (toTop - fromTop);
+}
+
 function Result({ item, mode, onModeChange, isWide, conversions }: ResultProps) {
+  const previewPane = useRef<HTMLDivElement>(null);
+  const markdown = currentMarkdown(item);
+  const label = `Markdown de ${item.name}`;
+  const { edit } = conversions;
+  const onEdit = useCallback((value: string) => edit(item.id, value), [edit, item.id]);
+  const syncPreview = useCallback(
+    (topLine: number) => {
+      if (previewPane.current) scrollPreviewTo(previewPane.current, markdown, topLine);
+    },
+    [markdown],
+  );
+
   if (item.status === 'queued' || item.status === 'reading') {
     const { page = 0, total = 0 } = item.progress ?? {};
     return (
@@ -108,7 +162,6 @@ function Result({ item, mode, onModeChange, isWide, conversions }: ResultProps) 
     );
   }
 
-  const markdown = currentMarkdown(item);
   if (!item.markdown.trim() && item.draft === null) {
     return (
       <div className={styles.state}>
@@ -133,16 +186,19 @@ function Result({ item, mode, onModeChange, isWide, conversions }: ResultProps) 
       />
       <div className={styles.panes} data-mode={mode}>
         {mode !== 'preview' && (
-          <div className={styles.pane}>
-            <SourceEditor
-              value={markdown}
-              onChange={(value) => conversions.edit(item.id, value)}
-              label={`Markdown de ${item.name}`}
-            />
+          <div className={styles.pane} data-kind="source">
+            <Suspense fallback={<SourceEditor value={markdown} onChange={onEdit} label={label} />}>
+              <MarkdownEditor
+                value={markdown}
+                onChange={onEdit}
+                label={label}
+                onTopLineChange={mode === 'split' ? syncPreview : undefined}
+              />
+            </Suspense>
           </div>
         )}
         {mode !== 'source' && (
-          <div className={styles.pane} data-kind="preview">
+          <div ref={previewPane} className={styles.pane} data-kind="preview">
             <Suspense fallback={<p className={styles.stateText}>Carregando visualização…</p>}>
               <MarkdownPreview markdown={markdown} />
             </Suspense>
@@ -170,6 +226,7 @@ function Toolbar({ item, markdown, mode, onModeChange, isWide, conversions }: To
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied('ok');
+      track('copied');
     } catch {
       setCopied('fail');
     }
@@ -228,7 +285,10 @@ function Toolbar({ item, markdown, mode, onModeChange, isWide, conversions }: To
             type="button"
             className="button"
             data-variant="primary"
-            onClick={() => downloadText(toMarkdownName(item.name), markdown)}
+            onClick={() => {
+              downloadText(toMarkdownName(item.name), markdown);
+              track('downloaded');
+            }}
           >
             <DownloadIcon />
             Baixar .md
@@ -238,6 +298,35 @@ function Toolbar({ item, markdown, mode, onModeChange, isWide, conversions }: To
       <p className="visually-hidden" aria-live="polite">
         {copied === 'ok' ? 'Markdown copiado para a área de transferência.' : ''}
       </p>
+    </div>
+  );
+}
+
+/** Lets people keep their files between visits, or not, and clear what is kept. */
+function HistorySetting({ conversions }: { conversions: Conversions }) {
+  const { historyEnabled, setHistoryEnabled, clearHistory } = conversions;
+  return (
+    <div className={styles.history}>
+      <label className={styles.historyToggle}>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={historyEnabled}
+          onChange={(event) => setHistoryEnabled(event.target.checked)}
+        />
+        Guardar arquivos neste navegador
+      </label>
+      <p className={styles.historyNote}>
+        {historyEnabled
+          ? 'Os arquivos convertidos ficam salvos só neste aparelho e voltam na próxima visita. Em computadores compartilhados, desligue ou limpe ao terminar.'
+          : 'Os arquivos somem ao fechar ou recarregar a página.'}
+      </p>
+      {historyEnabled && (
+        <button type="button" className="button" data-variant="ghost" onClick={clearHistory}>
+          Limpar histórico
+        </button>
+      )}
     </div>
   );
 }

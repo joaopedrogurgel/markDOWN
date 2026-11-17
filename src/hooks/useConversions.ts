@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { DEFAULT_OPTIONS, pagesToMarkdown, type ConversionOptions, type PageText } from '../lib/markdown';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { pagesToMarkdown, type ConversionOptions, type PageText } from '../lib/markdown';
 import { ExtractError, extractPdf } from '../lib/pdf/extract';
+import * as storage from '../lib/storage';
+import { reportError, track } from '../lib/telemetry';
 
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
@@ -19,6 +21,8 @@ export interface ConversionItem {
   draft: string | null;
   error: string | null;
   durationMs: number | null;
+  /** True when the item came back from the history of an earlier visit. */
+  restored: boolean;
 }
 
 interface State {
@@ -29,6 +33,7 @@ interface State {
 
 type Action =
   | { type: 'add'; items: ConversionItem[] }
+  | { type: 'restore'; items: storage.StoredItem[] }
   | { type: 'start'; id: string }
   | { type: 'progress'; id: string; page: number; total: number }
   | { type: 'done'; id: string; pages: PageText[]; durationMs: number }
@@ -52,8 +57,32 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         items: [...state.items, ...action.items],
-        selectedId: state.selectedId ?? action.items[0]?.id ?? null,
+        selectedId: action.items[0]?.id ?? state.selectedId,
       };
+    case 'restore': {
+      const known = new Set(state.items.map((item) => item.id));
+      const restored: ConversionItem[] = action.items
+        .filter((stored) => !known.has(stored.id))
+        .map((stored) => ({
+          id: stored.id,
+          name: stored.name,
+          size: stored.size,
+          status: 'done',
+          progress: null,
+          pages: stored.pages,
+          markdown: pagesToMarkdown(stored.pages, state.options),
+          draft: stored.draft,
+          error: null,
+          durationMs: stored.durationMs,
+          restored: true,
+        }));
+      if (!restored.length) return state;
+      return {
+        ...state,
+        items: [...restored, ...state.items],
+        selectedId: state.selectedId ?? restored[0].id,
+      };
+    }
     case 'start':
       return { ...state, items: update(state.items, action.id, () => ({ status: 'reading' })) };
     case 'progress':
@@ -115,15 +144,54 @@ function validate(file: File): string | null {
   return null;
 }
 
-/** Owns the list of files, converts them one at a time and keeps their Markdown in sync with the options. */
+const toStored = (item: ConversionItem): storage.StoredItem => ({
+  id: item.id,
+  name: item.name,
+  size: item.size,
+  pages: item.pages ?? [],
+  draft: item.draft,
+  durationMs: item.durationMs,
+  savedAt: Date.now(),
+});
+
+/**
+ * Owns the list of files: converts them one at a time, keeps their Markdown in sync
+ * with the options and, when history is on, keeps finished files between visits.
+ */
 export function useConversions() {
-  const [state, dispatch] = useReducer(reducer, {
+  const [state, dispatch] = useReducer(reducer, undefined, () => ({
     items: [],
     selectedId: null,
-    options: DEFAULT_OPTIONS,
-  });
+    options: storage.loadOptions(),
+  }));
+  const [historyEnabled, setHistoryEnabledState] = useState(storage.isHistoryEnabled);
+  // With history off there is nothing to read, so it counts as loaded from the start.
+  const [historyLoaded, setHistoryLoaded] = useState(() => !storage.isHistoryEnabled());
   const files = useRef(new Map<string, File>());
   const controllers = useRef(new Map<string, AbortController>());
+
+  // Bring back the files of the previous visit.
+  useEffect(() => {
+    if (!storage.isHistoryEnabled()) return;
+    let cancelled = false;
+    void storage.loadHistory().then((items) => {
+      if (cancelled) return;
+      if (items.length) dispatch({ type: 'restore', items });
+      setHistoryLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Keep the history in step with the finished files, debounced while typing. Only
+  // after it has been read, so an early save cannot wipe what is stored.
+  useEffect(() => {
+    if (!historyEnabled || !historyLoaded) return;
+    const finished = state.items.filter((item) => item.status === 'done' && item.pages);
+    const timer = setTimeout(() => void storage.saveHistory(finished.map(toStored)), 400);
+    return () => clearTimeout(timer);
+  }, [state.items, historyEnabled, historyLoaded]);
 
   const addFiles = useCallback((list: Iterable<File>) => {
     const items: ConversionItem[] = [];
@@ -142,6 +210,7 @@ export function useConversions() {
         draft: null,
         error,
         durationMs: null,
+        restored: false,
       });
     }
     if (items.length) dispatch({ type: 'add', items });
@@ -170,12 +239,18 @@ export function useConversions() {
           onProgress: ({ page, total }) => dispatch({ type: 'progress', id, page, total }),
         }),
       )
-      .then(({ pages }) => dispatch({ type: 'done', id, pages, durationMs: performance.now() - started }))
+      .then(({ pages }) => {
+        dispatch({ type: 'done', id, pages, durationMs: performance.now() - started });
+        track(pages.some((page) => page.runs.length > 0) ? 'converted' : 'no-text');
+      })
       .catch((error: unknown) => {
         if (error instanceof ExtractError && error.code === 'aborted') return;
         const message =
           error instanceof ExtractError ? error.message : 'Não foi possível converter este arquivo.';
         dispatch({ type: 'fail', id, error: message });
+        track('failed');
+        // Damaged or protected files are the user's situation, not a bug worth reporting.
+        if (!(error instanceof ExtractError) || error.code === 'unknown') reportError(error);
       })
       .finally(() => {
         controllers.current.delete(id);
@@ -195,16 +270,36 @@ export function useConversions() {
     dispatch({ type: 'clear' });
   }, []);
 
+  const setOptions = useCallback((options: ConversionOptions) => {
+    storage.saveOptions(options);
+    dispatch({ type: 'setOptions', options });
+  }, []);
+
+  const setHistoryEnabled = useCallback((enabled: boolean) => {
+    storage.setHistoryEnabled(enabled);
+    setHistoryEnabledState(enabled);
+    if (!enabled) void storage.clearHistory();
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    void storage.clearHistory();
+    dispatch({ type: 'clear' });
+  }, []);
+
   return {
     ...state,
     selected: state.items.find((item) => item.id === state.selectedId) ?? null,
+    historyEnabled,
+    historyLoaded,
     addFiles,
     remove,
     clear,
+    clearHistory,
+    setHistoryEnabled,
+    setOptions,
     select: useCallback((id: string) => dispatch({ type: 'select', id }), []),
     edit: useCallback((id: string, draft: string) => dispatch({ type: 'edit', id, draft }), []),
     discardDraft: useCallback((id: string) => dispatch({ type: 'discardDraft', id }), []),
-    setOptions: useCallback((options: ConversionOptions) => dispatch({ type: 'setOptions', options }), []),
   };
 }
 

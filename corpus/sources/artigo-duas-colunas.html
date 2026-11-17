@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Leitura de documentos em duas colunas</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 22mm 18mm;
+      }
+      body {
+        font-family: 'DejaVu Serif', serif;
+        font-size: 10.5pt;
+        line-height: 1.45;
+        color: #111;
+      }
+      h1 {
+        font-family: 'DejaVu Sans', sans-serif;
+        font-size: 20pt;
+        margin: 0 0 4pt;
+      }
+      .autor {
+        font-style: italic;
+        margin: 0 0 12pt;
+      }
+      .resumo {
+        margin: 0 0 14pt;
+      }
+      .colunas {
+        column-count: 2;
+        column-gap: 9mm;
+        text-align: justify;
+      }
+      h2 {
+        font-family: 'DejaVu Sans', sans-serif;
+        font-size: 13pt;
+        margin: 10pt 0 4pt;
+        break-after: avoid;
+      }
+      p {
+        margin: 0 0 7pt;
+      }
+      a {
+        color: #1a3dbf;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Leitura de documentos em duas colunas</h1>
+    <p class="autor">Equipe markDOWN, novembro de 2026</p>
+    <p class="resumo">
+      <strong>Resumo.</strong> Artigos científicos, revistas e jornais costumam usar duas colunas. Quem
+      converte esses arquivos linha a linha mistura frases das duas colunas e perde o sentido do texto. Este
+      documento serve de teste para a ordem de leitura.
+    </p>
+    <div class="colunas">
+      <h2>Introdução</h2>
+      <p>
+        Um PDF não guarda parágrafos nem colunas. Ele guarda apenas trechos de texto com uma posição na
+        página, e cabe ao leitor reconstruir a ordem em que esses trechos devem ser lidos.
+      </p>
+      <p>
+        Quando a página tem duas colunas, a ordem certa é descer pela coluna da esquerda até o fim e só então
+        subir para o topo da coluna da direita. Uma leitura ingênua, de cima para baixo, alterna entre as duas
+        a cada linha.
+      </p>
+      <h2>Como a calha é encontrada</h2>
+      <p>
+        A calha é a faixa vertical vazia que separa as colunas. Para encontrá-la, o conversor mede quantos
+        trechos cobrem cada posição horizontal da página e procura uma faixa estreita, perto do centro, quase
+        sem cobertura.
+      </p>
+      <p>
+        Títulos e resumos que ocupam a largura inteira atravessam a calha. Eles são mantidos no lugar em que
+        aparecem, e só o texto entre eles é dividido em colunas.
+      </p>
+      <h2>Cuidados com tabelas</h2>
+      <p>
+        Tabelas também têm faixas vazias entre as colunas. Para não confundir uma tabela com texto em colunas,
+        o conversor exige que as linhas de cada lado ocupem a maior parte da largura da coluna, o que quase
+        nunca acontece com células de tabela.
+      </p>
+      <p>
+        Os detalhes da implementação estão no
+        <a href="https://github.com/joaopedrogurgel/markDOWN">repositório do projeto</a>, com testes para cada
+        um desses casos.
+      </p>
+      <h2>Conclusão</h2>
+      <p>
+        Com a ordem de leitura correta, o texto convertido pode ser reaproveitado em <em>wikis</em>,
+        documentação e repositórios sem precisar de revisão linha a linha.
+      </p>
+    </div>
+  </body>
+</html>

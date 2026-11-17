@@ -55,6 +55,36 @@
   clip: rect(0 0 0 0);
 }
 
+.history {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--line);
+}
+
+.historyToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.historyNote {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.history :global(.button) {
+  min-height: 2rem;
+  margin-left: calc(var(--space-3) * -1);
+  padding: 0 var(--space-3);
+}
+
 /* ---------- Main ---------- */
 .main {
   display: flex;

@@ -2,3 +2,8 @@ dist
 node_modules
 package-lock.json
 public/exemplo.pdf
+corpus/*.md
+corpus/.out
+test-results
+playwright-report
+public/icons

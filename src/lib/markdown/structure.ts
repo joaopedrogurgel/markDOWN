@@ -1,11 +1,13 @@
 import { roundSize } from './layout';
-import { joinWrapped } from './text';
+import { dropPrefix, joinSpans } from './spans';
+import { matchTable } from './tables';
 import type { Block, ConversionOptions, Line } from './types';
 
-const MARGIN_ZONE = 0.1;
+/** Share of the page height, at the top and at the bottom, where headers and footers live. */
+const MARGIN_ZONE = 0.12;
 // Symbol bullets may touch the text; dashes and asterisks need a space so "-5%" stays text.
-const BULLET = /^(?:[•◦▪▫‣⁃●○■□]\s*|[–—*-]\s+)(.+)$/u;
-const ORDERED = /^(\d{1,3}[.)]|[a-z]\)|[IVX]{1,4}[.)])\s+(.+)$/;
+const BULLET = /^(?:[•◦▪▫‣⁃●○■□]\s*|[–—*-]\s+)(?=\S)/u;
+const ORDERED = /^(\d{1,3}[.)]|[a-z]\)|[IVX]{1,4}[.)])\s+(?=\S)/;
 const PAGE_NUMBER = /^(?:p(?:á|a)g(?:ina)?\.?|page)?\s*\d+(?:\s*(?:\/|de|of)\s*\d+)?$/i;
 const SENTENCE_END = /[.!?:;]["')\]]?$/;
 
@@ -60,12 +62,12 @@ function looksLikeBoldHeading(line: Line, body: number): boolean {
     line.bold &&
     roundSize(line.fontSize) >= body &&
     line.text.length <= 90 &&
-    !SENTENCE_END.test(line.text.replace(/\*+$/, '')) &&
+    !SENTENCE_END.test(line.text) &&
     /\p{L}/u.test(line.text)
   );
 }
 
-/** Groups lines into Markdown blocks: headings, paragraphs, list items and page breaks. */
+/** Groups lines into Markdown blocks: headings, paragraphs, list items, tables and page breaks. */
 export function buildBlocks(lines: Line[], options: ConversionOptions): Block[] {
   const body = bodyFontSize(lines);
   const scale = options.detectHeadings ? headingScale(lines, body) : new Map<number, number>();
@@ -75,27 +77,41 @@ export function buildBlocks(lines: Line[], options: ConversionOptions): Block[] 
   let previous: Line | null = null;
   let listBaseX: number | null = null;
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
     const last = blocks.at(-1);
     const samePage = previous?.pageNumber === line.pageNumber;
     const gap = previous && samePage ? previous.y - line.y : Number.POSITIVE_INFINITY;
-    const tightGap = gap <= Math.max(previous?.fontSize ?? 0, line.fontSize) * 1.75;
+    // A negative gap means the text jumped up to the top of the next column.
+    const columnJump = gap < 0;
+    const tightGap = !columnJump && gap <= Math.max(previous?.fontSize ?? 0, line.fontSize) * 1.75;
 
     if (previous && !samePage && options.pageBreaks) {
       blocks.push({ kind: 'pageBreak', pageNumber: line.pageNumber });
     }
 
+    // Tables: several consecutive rows whose cells line up in the same bands.
+    if (options.detectTables && line.pieces.length >= 2) {
+      const table = matchTable(lines, index);
+      if (table) {
+        blocks.push(table.block);
+        index = table.end - 1;
+        previous = lines[index];
+        listBaseX = null;
+        continue;
+      }
+    }
+
     const headingLevel = options.detectHeadings
       ? (scale.get(roundSize(line.fontSize)) ?? (looksLikeBoldHeading(line, body) ? boldLevel : null))
       : null;
-    const text = headingLevel && line.bold ? line.text.replace(/^\*\*(.+)\*\*$/, '$1') : line.text;
 
     // Headings: consecutive lines of the same level form a single, multi-line title.
     if (headingLevel) {
       if (last?.kind === 'heading' && last.level === headingLevel && samePage && tightGap) {
-        last.text = joinWrapped(last.text, text);
+        last.spans = joinSpans(last.spans, line.spans);
       } else {
-        blocks.push({ kind: 'heading', level: headingLevel, text });
+        blocks.push({ kind: 'heading', level: headingLevel, spans: line.spans });
       }
       listBaseX = null;
       previous = line;
@@ -105,17 +121,16 @@ export function buildBlocks(lines: Line[], options: ConversionOptions): Block[] 
     // Lists: bullets and numbered items, nested by their indentation.
     const bullet = options.detectLists ? line.text.match(BULLET) : null;
     const ordered = options.detectLists && !bullet ? line.text.match(ORDERED) : null;
-    if (bullet || ordered) {
-      const markerSource = bullet ? '-' : ordered![1];
-      const itemText = (bullet ? bullet[1] : ordered![2]).trim();
+    const marker = bullet ?? ordered;
+    if (marker) {
       if (listBaseX === null || line.x < listBaseX) listBaseX = line.x;
       const depth = Math.min(Math.round((line.x - listBaseX) / (line.fontSize * 1.5)), 3);
       blocks.push({
         kind: 'listItem',
         ordered: Boolean(ordered),
-        marker: bullet ? '-' : normaliseOrderedMarker(markerSource),
+        marker: bullet ? '-' : normaliseOrderedMarker(ordered![1]),
         depth,
-        text: itemText,
+        spans: dropPrefix(line.spans, marker[0].length),
       });
       previous = line;
       continue;
@@ -123,23 +138,27 @@ export function buildBlocks(lines: Line[], options: ConversionOptions): Block[] 
 
     // Continuation of a list item: an indented, tightly spaced line after it.
     if (last?.kind === 'listItem' && samePage && tightGap && listBaseX !== null && line.x > listBaseX) {
-      last.text = joinWrapped(last.text, line.text);
+      last.spans = joinSpans(last.spans, line.spans);
       previous = line;
       continue;
     }
 
-    // Paragraphs: wrapped lines of similar size, possibly flowing across a page break.
+    // Paragraphs: wrapped lines of similar size, possibly flowing into the next column or page.
     const sameSize = previous !== null && Math.abs(previous.fontSize - line.fontSize) < 1;
-    const flowsAcrossPages =
+    // Some writers (LaTeX, books) mark new paragraphs with a first-line indent instead of space.
+    const indented =
       previous !== null &&
-      !samePage &&
-      !options.pageBreaks &&
-      last?.kind === 'paragraph' &&
-      !SENTENCE_END.test(last.text);
-    if (last?.kind === 'paragraph' && sameSize && ((samePage && tightGap) || flowsAcrossPages)) {
-      last.text = joinWrapped(last.text, line.text);
+      samePage &&
+      !columnJump &&
+      line.x > previous.x + line.fontSize * 0.8 &&
+      line.x - previous.x < line.fontSize * 4;
+    const unfinished = last?.kind === 'paragraph' && !SENTENCE_END.test(last.spans.at(-1)?.text ?? '');
+    const flows = previous !== null && unfinished && (columnJump || (!samePage && !options.pageBreaks));
+    const startsParagraph = indented && !unfinished;
+    if (last?.kind === 'paragraph' && sameSize && !startsParagraph && ((samePage && tightGap) || flows)) {
+      last.spans = joinSpans(last.spans, line.spans);
     } else {
-      blocks.push({ kind: 'paragraph', text: line.text });
+      blocks.push({ kind: 'paragraph', spans: line.spans });
       listBaseX = null;
     }
     previous = line;

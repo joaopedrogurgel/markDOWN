@@ -1,9 +1,13 @@
+import { normaliseSpans, plainText } from './spans';
 import { cleanText } from './text';
-import type { Line, PageText, TextRun } from './types';
+import type { Line, PageText, Piece, Span, TextRun } from './types';
+
+/** Gap, in multiples of the font size, that is wide enough to need a space between two runs. */
+const WORD_GAP = 0.15;
 
 /** Merges a page's text runs into visual lines, ordered top to bottom, left to right. */
 export function buildLines(page: PageText): Line[] {
-  const runs = page.runs.filter((run) => run.text.trim().length > 0 || run.text === ' ');
+  const runs = page.runs.filter((run) => run.text.length > 0);
   const sorted = [...runs].sort((a, b) => b.y - a.y || a.x - b.x);
 
   const groups: TextRun[][] = [];
@@ -21,55 +25,41 @@ export function buildLines(page: PageText): Line[] {
   return groups.map((group) => toLine(group, page)).filter((line): line is Line => line !== null);
 }
 
+const toSpan = (run: TextRun, text: string): Span => ({
+  text: cleanText(text),
+  bold: run.bold,
+  italic: run.italic,
+  link: run.link,
+});
+
 function toLine(group: TextRun[], page: PageText): Line | null {
   const runs = [...group].sort((a, b) => a.x - b.x);
   const visible = runs.filter((run) => run.text.trim().length > 0);
   if (visible.length === 0) return null;
 
-  const allBold = visible.every((run) => run.bold);
-  const anyBold = visible.some((run) => run.bold);
-
-  // Merge neighbouring runs that share the same weight, so a bold span split
-  // into several runs becomes a single **span**.
-  const segments: { text: string; bold: boolean }[] = [];
+  const pieces: Piece[] = [];
+  const spans: Span[] = [];
   let previousEnd: number | null = null;
-  for (const run of runs) {
+  for (const run of visible) {
     const gap = previousEnd === null ? 0 : run.x - previousEnd;
-    const needsSpace = previousEnd !== null && gap > run.fontSize * 0.15;
-    const last = segments.at(-1);
-    const piece = (needsSpace ? ' ' : '') + run.text;
-    const bold = run.text.trim() ? run.bold : (last?.bold ?? false);
-
-    if (last && last.bold === bold) {
-      last.text += piece;
-    } else {
-      segments.push({ text: piece, bold });
-    }
+    const needsSpace = previousEnd !== null && gap > run.fontSize * WORD_GAP;
+    spans.push(toSpan(run, (needsSpace ? ' ' : '') + run.text));
+    pieces.push({ x: run.x, right: run.x + run.width, spans: normaliseSpans([toSpan(run, run.text)]) });
     previousEnd = run.x + run.width;
   }
-
-  const text = segments
-    .map(({ text: raw, bold }) => {
-      const value = cleanText(raw);
-      if (!bold || allBold || !anyBold || !value.trim()) return value;
-      // Keep surrounding spaces outside the markers: "**word** " not "**word **".
-      const lead = value.match(/^\s*/)?.[0] ?? '';
-      const trail = value.match(/\s*$/)?.[0] ?? '';
-      return `${lead}**${value.trim()}**${trail}`;
-    })
-    .join('')
-    .replace(/\s+/g, ' ')
-    .trim();
-
+  const lineSpans = normaliseSpans(spans);
+  const text = plainText(lineSpans);
   if (!text) return null;
 
-  const fontSize = dominantSize(visible);
   return {
+    spans: lineSpans,
+    pieces: pieces.filter((piece) => piece.spans.length > 0),
     text,
     x: visible[0].x,
+    right: Math.max(...visible.map((run) => run.x + run.width)),
     y: visible[0].y,
-    fontSize,
-    bold: allBold,
+    fontSize: dominantSize(visible),
+    bold: visible.every((run) => run.bold),
     pageNumber: page.pageNumber,
     pageHeight: page.height,
   };

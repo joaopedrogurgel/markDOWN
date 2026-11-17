@@ -25,7 +25,7 @@ export function Header({ theme, onToggleTheme, onHome }: HeaderProps) {
         <span className={styles.mark} aria-hidden>
           #
         </span>
-        Pauta
+        markDOWN
       </a>
       <nav className={styles.actions} aria-label="Links">
         <a className="button" data-variant="ghost" href={SITE.repositoryUrl} target="_blank" rel="noreferrer">

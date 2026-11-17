@@ -1,3 +1,4 @@
+import { splitColumns } from './columns';
 import { buildLines } from './layout';
 import { renderMarkdown } from './render';
 import { buildBlocks, removeRepeatedLines } from './structure';
@@ -9,10 +10,14 @@ export type { ConversionOptions, PageText, TextRun } from './types';
 
 /**
  * Converts the text extracted from a PDF into Markdown.
+ *
+ * Pipeline: columns → lines → structure (headings, lists, tables, paragraphs) → render.
  * Pure and synchronous, so it can re-run instantly when the user changes an option.
  */
 export function pagesToMarkdown(pages: PageText[], options: ConversionOptions): string {
-  let lines = pages.flatMap(buildLines);
+  let lines = pages.flatMap((page) =>
+    (options.detectColumns ? splitColumns(page) : [page]).flatMap(buildLines),
+  );
   if (options.removeRepeatedLines) {
     lines = removeRepeatedLines(lines, pages.length);
   }
