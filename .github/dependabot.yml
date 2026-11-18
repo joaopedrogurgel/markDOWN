@@ -8,6 +8,11 @@ updates:
     groups:
       npm:
         patterns: ['*']
+    ignore:
+      # The Node types must match the oldest Node the project runs on (CI uses Node 22),
+      # or TypeScript accepts APIs that fail at runtime. Bump them by hand with the CI version.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:

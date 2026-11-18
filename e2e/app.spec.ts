@@ -104,6 +104,8 @@ test('keeps converted files between visits, until the history is cleared', async
 
   if (isMobile(page)) await page.locator('summary', { hasText: 'Opções de conversão' }).click();
   await page.getByRole('button', { name: 'Limpar histórico' }).click();
+  // The list empties only after the stored files are deleted.
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Do PDF ao Markdown');
   await page.reload();
   await expect(page.getByRole('button', { name: /Continuar de onde parou/ })).toBeHidden();
 });

@@ -54,6 +54,10 @@ export const setHistoryEnabled = (enabled: boolean) => write(HISTORY_SETTING_KEY
 // IndexedDB holds the extracted pages, which can be several megabytes; idb-keyval loads on first use.
 const idb = () => import('idb-keyval');
 
+// Writes run one after another, so a save that started before "clear" can never land after it.
+let writes: Promise<void> = Promise.resolve();
+const enqueue = (write: () => Promise<void>) => (writes = writes.then(write, write));
+
 export async function loadHistory(): Promise<StoredItem[]> {
   try {
     const { get } = await idb();
@@ -64,20 +68,24 @@ export async function loadHistory(): Promise<StoredItem[]> {
   }
 }
 
-export async function saveHistory(items: StoredItem[]): Promise<void> {
-  try {
-    const { set } = await idb();
-    await set(HISTORY_DB_KEY, items);
-  } catch {
-    // Quota exceeded or storage blocked: the current session keeps working.
-  }
+export function saveHistory(items: StoredItem[]): Promise<void> {
+  return enqueue(async () => {
+    try {
+      const { set } = await idb();
+      await set(HISTORY_DB_KEY, items);
+    } catch {
+      // Quota exceeded or storage blocked: the current session keeps working.
+    }
+  });
 }
 
-export async function clearHistory(): Promise<void> {
-  try {
-    const { del } = await idb();
-    await del(HISTORY_DB_KEY);
-  } catch {
-    // Nothing stored, or storage blocked.
-  }
+export function clearHistory(): Promise<void> {
+  return enqueue(async () => {
+    try {
+      const { del } = await idb();
+      await del(HISTORY_DB_KEY);
+    } catch {
+      // Nothing stored, or storage blocked.
+    }
+  });
 }
