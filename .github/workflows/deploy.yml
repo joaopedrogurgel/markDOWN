@@ -68,7 +68,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           VITE_GOATCOUNTER_URL: ${{ vars.GOATCOUNTER_URL }}
       - run: npm run size
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: github.ref == 'refs/heads/main'
         with:
           path: dist
