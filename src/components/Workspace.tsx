@@ -323,7 +323,7 @@ function HistorySetting({ conversions }: { conversions: Conversions }) {
           : 'Os arquivos somem ao fechar ou recarregar a página.'}
       </p>
       {historyEnabled && (
-        <button type="button" className="button" data-variant="ghost" onClick={clearHistory}>
+        <button type="button" className="button" data-variant="ghost" onClick={() => void clearHistory()}>
           Limpar histórico
         </button>
       )}
