@@ -186,11 +186,12 @@ export function useConversions() {
 
   // Keep the history in step with the finished files, debounced while typing. Only
   // after it has been read, so an early save cannot wipe what is stored.
+  const pendingSave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     if (!historyEnabled || !historyLoaded) return;
     const finished = state.items.filter((item) => item.status === 'done' && item.pages);
-    const timer = setTimeout(() => void storage.saveHistory(finished.map(toStored)), 400);
-    return () => clearTimeout(timer);
+    pendingSave.current = setTimeout(() => void storage.saveHistory(finished.map(toStored)), 400);
+    return () => clearTimeout(pendingSave.current);
   }, [state.items, historyEnabled, historyLoaded]);
 
   const addFiles = useCallback((list: Iterable<File>) => {
@@ -281,8 +282,10 @@ export function useConversions() {
     if (!enabled) void storage.clearHistory();
   }, []);
 
-  const clearHistory = useCallback(() => {
-    void storage.clearHistory();
+  /** Resolves once the stored files are gone, so a reload right after cannot bring them back. */
+  const clearHistory = useCallback(async () => {
+    clearTimeout(pendingSave.current);
+    await storage.clearHistory();
     dispatch({ type: 'clear' });
   }, []);
 
